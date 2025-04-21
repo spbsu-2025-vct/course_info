@@ -1,0 +1,130 @@
+# ==============================================
+# ConfigMap: Хранит конфигурацию для Nginx
+# ==============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+data:
+  default.conf: |  # Конфиг для Nginx
+    server {
+      listen 80 default_server;
+      server_name  _;
+      default_type text/plain;
+
+      # Обработка корневого пути
+      location / {
+         return 200 'Hello from $hostname\n';  # Возвращает имя хоста контейнера
+       }
+
+      # Доступ к файлам через WebDAV
+      location /files {
+        alias /data;  # Папка для файлового хранилища
+        autoindex on;  # Показывать список файлов
+        client_body_temp_path /tmp;
+        dav_methods PUT DELETE MKCOL COPY MOVE;  # Разрешенные методы WebDAV
+        create_full_put_path on;  # Автосоздание директорий
+        dav_access user:rw group:rw all:r;  # Права доступа
+      }
+    }
+
+# ==============================================
+# Deployment: Разворачивает 2 копии Nginx
+# ==============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  replicas: 2  # Две идентичные копии пода
+  selector:
+    matchLabels:
+      app: my-app  # Селектор для управления подами
+  template:
+    metadata:
+      labels:
+        app: my-app  # Метка для Service
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.12  # Устаревшая версия (для примера)
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d/  # Подмена конфига Nginx
+            - name: data
+              mountPath: /data  # Точка монтирования PVC
+      volumes:
+        - name: config
+          configMap:
+            name: my-configmap  # Используем созданный ConfigMap
+        - name: data
+          persistentVolumeClaim:
+            claimName: fileshare  # Привязка постоянного хранилища
+
+# ==============================================
+# Service: Публикует приложение наружу
+# ==============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service-load-balancer
+spec:
+  type: LoadBalancer  # Создает внешний балансировщик нагрузки
+  ports:
+    - port: 80        # Порт сервиса
+      targetPort: 80  # Порт контейнера
+  selector:
+    app: my-app  # Целевые поды
+
+# ==============================================
+# StorageClass: Описывает тип хранилища
+# ==============================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+provisioner: kubernetes.io/no-provisioner  # Ручное управление томами
+volumeBindingMode: WaitForFirstConsumer  # Отложенная привязка
+
+# ==============================================
+# PersistentVolume: Локальное хранилище
+# ==============================================
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  capacity:
+    storage: 50Mi  # Размер тома
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany  # Монтирование с несколькими потребителями (редко для local)
+  persistentVolumeReclaimPolicy: Retain  # Данные сохраняются после удаления PVC
+  storageClassName: local-storage  # Связь с StorageClass
+  local:
+    path: /mnt/share  # Путь на ноде (только для демонстрации!)
+  nodeAffinity:  # Привязка к конкретной ноде
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - minikube  # Специфично для Minikube!
+
+# ==============================================
+# PersistentVolumeClaim: Запрос хранилища
+# ==============================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fileshare
+spec:
+  storageClassName: local-storage  # Используем наш StorageClass
+  accessModes:
+    - ReadWriteMany  # Должен совпадать с PV
+  resources:
+    requests:
+      storage: 50Mi  # Должен совпадать с PV

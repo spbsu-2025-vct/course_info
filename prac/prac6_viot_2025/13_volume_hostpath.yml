@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-example
+spec:
+  containers:
+  - name: node-info
+    image: alpine
+    command: ["sh", "-c", "ls /host/etc && sleep 3600"]
+    volumeMounts:
+    - name: host-vol
+      mountPath: /host
+  volumes:
+  - name: host-vol
+    hostPath:
+      path: /etc  # Директория на ноде
+      type: Directory

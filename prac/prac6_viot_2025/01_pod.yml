@@ -1,0 +1,13 @@
+apiVersion: v1 # Версия API
+kind: Pod # Тип сущности 
+metadata:
+  name: my-pod # Метаданные
+  namespace: default # Пространство имен
+  labels:
+    name: nginx
+spec: # спецификация
+  containers:
+    - name: nginx
+      image: nginx
+      ports:
+        - containerPort: 80 # какой порт контейнера открыт

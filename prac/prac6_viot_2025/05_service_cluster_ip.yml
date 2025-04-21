@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service # тип абстракции
+metadata:
+  name: my-service-cluster-ip
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80 # входящий порт сервиса
+      targetPort: 80 # целевой порт у pod-ов сервиса
+  selector:
+    app: my-app

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: my-replicaset
+spec:
+  replicas: 3 # количество контейнеров 
+  selector:
+    matchLabels:
+      app: my-app # селектор для поиска своих подов
+  template: # шаблон пода
+    metadata:
+      labels:
+        app: my-app # метка
+    spec:
+      containers:
+        - image: nginx:1.13
+          name: nginx
+          ports:
+            - containerPort: 80
