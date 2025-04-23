@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  DB_HOST: "postgres-service"  # Лучше использовать Service name
+  DB_NAME: "mydb"
+  DB_USER: "postgres"
+  DB_PASSWORD: "postgres"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend-app
+          image: dascha770/my-backend-app:4
+          ports:
+            - containerPort: 5001
+          envFrom:
+          - configMapRef:
+              name: backend-config
